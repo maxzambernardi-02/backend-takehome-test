@@ -83,7 +83,7 @@ Try and include:
 - Any changes you'd make given you had longer to work on it
 
 ## Submitting Your Solution
-Please create a new private repository on GitHub and commit your solution to it. Once you're done, please invite 
+Please create a new **private repository** on GitHub and commit your solution to it. Once you're done, please invite 
 `sano-review` as a collaborator to the repository, as well as letting us know that you've completed the task via email 
 with the talent team.
 
