@@ -8,6 +8,7 @@ import express, {
 
 import type { Store } from "../storage/index.js";
 import { createIndividualsRouter } from "./routes/individuals.js";
+import { createGeneticDataRouter } from "./routes/geneticData.js";
 
 export interface AppDependencies {
   readonly store: Store;
@@ -30,6 +31,10 @@ export function createApp(deps: AppDependencies): Express {
   });
 
   app.use("/individuals", createIndividualsRouter(deps.store));
+  app.use(
+    "/individuals/:individualId/genetic-data",
+    createGeneticDataRouter(deps.store),
+  );
 
   app.use((_req: Request, res: Response) => {
     res.status(404).json({ error: { message: "Not Found" } });
