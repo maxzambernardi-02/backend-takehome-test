@@ -1,94 +1,257 @@
-# Backend Take-home Test
+# Sano Genetic Data — Backend Take-home Submission
 
-The task is split in three parts:
-- The first part is to implement a parser for a proprietary genetic data format
-- The second part is to implement an API that allows for retrieving genetic results stored in the proprietary format.
-- The final part is a short loom video (~5 mins) outlining your solution
+A small TypeScript backend that parses a proprietary `.sano` genetic-data
+format and exposes a REST API to upload and query results per individual.
 
-You can complete this task in any programming language of your choice, but we ask that you use a language that you are 
-comfortable answering detailed questions about.
+The original assignment brief is preserved in [ASSIGNMENT.md](./ASSIGNMENT.md).
 
-We understand that balancing this task with other responsibilities is important, so we estimate that completing it should take a few hours.
-While we suggest aiming for that time frame, feel free to exceed it if necessary, though we remain mindful of respecting your time.
+**Loom video:** _TODO_ — paste URL here before submitting.
 
-We are interested in understanding how you would structure and architect production-grade backend code for a medium to large codebase. Please organize your solution in a way that reflects how you would build a maintainable service in a real production environment.
+---
 
-> [!TIP]
-> This is a big task and you won't have time to implement everything perfectly in the suggested time frame, we understand (and expect) you to have
-> to make tradeoffs when implementing this, so aim to get a working solution and leave comments where you'd improve things if you had more
-> time.
+## Contents
 
-## AI usage
+- [Stack](#stack)
+- [Project layout](#project-layout)
+- [Run it locally](#run-it-locally)
+- [Tests](#tests)
+- [API reference](#api-reference)
+- [End-to-end walkthrough (the four README use cases)](#end-to-end-walkthrough-the-four-readme-use-cases)
+- [Design notes and tradeoffs](#design-notes-and-tradeoffs)
+- [What I would add with more time](#what-i-would-add-with-more-time)
+- [AI usage](#ai-usage)
 
-You're welcome to use AI tools whilst completing this task. We won't mark candidates down for using AI.
+---
 
-What we do expect is that you fully own the submission:
+## Stack
 
-- you understand the code that you submit
-- you can explain your design and tradeoffs
-- you can discuss what you would improve with more time
+- **Language:** TypeScript (strict mode).
+- **Runtime:** Node.js 20+.
+- **HTTP:** Express 4.
+- **File uploads:** Multer (`memoryStorage`, 5 MB limit, one file per request).
+- **Testing:** Vitest + Supertest.
 
-If you'd like to share how you used AI (for example what it helped with, what you refined, and what you verified yourself), that context is welcome in your submission.
+No database. A `Store` interface defines the persistence boundary and the
+current implementation is an in-memory `Map`. Swapping in SQLite or Postgres
+would be a new module behind the same interface — no route changes.
 
-### Part 1: Genetic Data Parser
-You'll be writing a parser for a proprietary genetic data format. The format is a text file whose format contains
-genetic data for a single individual. The first line of the file is a header (line starts with a `#`) that contains:
-- Variant ID (string, unique identifier for the genetic variant, e.g. `rs12345`)
-- Chromosome (1-22, X, Y)
-- Position on chromosome (integer greater than 0)
-- Reference allele (single character representing a nucleotide: `[A, C, G, T]`)
-- Alternate allele (single character representing a nucleotide: `[A, C, G, T]`)
-- Alternate allele frequency (float, between 0 and 1)
+## Project layout
 
-Each of these fields is separated by a comma (`,`). The header line will always contain these fields (and only these 
-fields) but the order may vary.
+```
+src/
+  parser/        # Part 1: .sano parser (pure, no I/O)
+  storage/       # Store interface + in-memory implementation
+  api/
+    app.ts       # Express factory (middleware, routes, error handler)
+    server.ts    # Entry point: builds store, listens on PORT
+    routes/
+      individuals.ts     # POST / GET /individuals
+      geneticData.ts     # POST / GET /individuals/:id/genetic-data
+```
 
-The rest of the file contains the genetic data for the individual. Each line contains values for the fields in the 
-header in the same order as the header. The values are separated by a comma (`,`).
+## Run it locally
 
-If any of the data is missing or invalid, the parser should return an error.
+Prerequisites: **Node.js 20+** and **npm**.
 
-A valid sample file for an individual is provided in this repo [here](./individual123.sano).
+```bash
+npm install
+npm run build
+npm start
+```
 
-### Part 2: Genetic Results API
-You'll be writing an API that allows for uploading and retrieving genetic results. We expect you to use your parser from
-Part 1 to parse the genetic data that is uploaded and store it for retrieval later.
+The server listens on **http://localhost:3000** by default. Override with
+`PORT` / `HOST` environment variables.
 
-> [!IMPORTANT]
-> For this task, the choice of data store (e.g., in-memory object, SQL, file system, etc.) is entirely up to you. The focus is on how you create the abstraction, not on specific database expertise.
+Quick sanity check:
 
-Your API should implement the following endpoints:
-- `GET /individuals`: returns a list of individual IDs
-- `GET /individuals/<individual_id>/genetic-data?variants=rs123,rs456`: returns all the genetic data for a single individual, optionally filtered by variant IDs
-- `POST /individuals`: creates a new individual given an ID
-- `POST /individuals/<individual_id>/genetic-data`: takes a sano file and stores the genetic data for that individual to be queried later
+```bash
+curl http://localhost:3000/health
+# → {"status":"ok"}
+```
 
-Include a `README.md` file with instructions on how to run your API and how to interact with it to fulfill the use cases
-described below:
-1. Create an individual with ID `individual123` using the `POST /individuals` endpoint
-2. Show that the individual is present by querying the `GET /individuals` endpoint
-3. Upload some genetic data from a file to the individual via the `POST /individuals/individual123/genetic-data` endpoint
-4. Show that all the data is queryable via the `GET /individuals/individual123/genetic-data` endpoint, and then show that the filtering works successfully by calling the same endpoint again, but this time filtering for only 2 variants present in the file
+## Tests
 
+```bash
+npm test
+```
 
-### Part 3: Loom video
+50 tests covering the parser, app setup, individuals routes, and
+genetic-data routes (including round-tripping the provided
+`individual123.sano` sample).
 
-Create a short [loom](https://www.loom.com/) video (~5 minutes) walking us through your submission and include the link your README.
+---
 
-This is your opportunity to explain the submission to the team. The content of the video is up to you, but we want to hear about your decision making process as an engineer as opposed to a demonstration of each endpoint.
+## API reference
 
-Try and include:
-- How you approached the problem, solutions considered, and the tradeoffs involved
-- What you found difficult
-- Any changes you'd make given you had longer to work on it
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/individuals` | Create an individual. JSON body `{ "id": "<id>" }`. |
+| `GET`  | `/individuals` | List individual IDs. |
+| `POST` | `/individuals/:id/genetic-data` | Upload a `.sano` file (multipart field `file`). Parses and **replaces** stored variants. |
+| `GET`  | `/individuals/:id/genetic-data?variants=rs1,rs2` | Return stored variants, optionally filtered by variant IDs. |
 
-## Submitting Your Solution
-Please create a new **private repository** on GitHub and commit your solution to it. Once you're done, please invite 
-`sano-review` as a collaborator to the repository, as well as letting us know that you've completed the task via email 
-with the talent team.
+**Error shape** (consistent across the API):
 
-In your README.md, remember to include the URL to your loom video.
+```json
+{ "error": { "message": "<human readable>", "details": { "...": "optional" } } }
+```
 
-> [!CAUTION]
-> If you haven't heard back from the talent team within a couple of days of sending your solution, follow up with them
-> to check it has been received
+Status codes:
+
+- `400` — bad JSON body, bad file upload, parser validation failure.
+- `404` — individual does not exist.
+- `409` — individual with that ID already exists.
+- `201` — created (individual) / upload accepted.
+- `200` — list / read success.
+
+`id` constraints (documented choice, easy to relax): 1–64 characters of
+`[A-Za-z0-9_-]`.
+
+---
+
+## End-to-end walkthrough (the four README use cases)
+
+Start the server in one terminal (`npm start`), then run the commands below
+in another.
+
+### 1. Create `individual123`
+
+```bash
+curl -s -X POST http://localhost:3000/individuals \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"individual123"}'
+```
+
+Expected: `201 Created`
+
+```json
+{"id":"individual123"}
+```
+
+### 2. List individuals
+
+```bash
+curl -s http://localhost:3000/individuals
+```
+
+Expected: `200 OK`
+
+```json
+{"individuals":["individual123"]}
+```
+
+### 3. Upload the sample `.sano` file
+
+```bash
+curl -s -X POST http://localhost:3000/individuals/individual123/genetic-data \
+  -F "file=@individual123.sano"
+```
+
+Expected: `201 Created`
+
+```json
+{"individualId":"individual123","count":4}
+```
+
+> Note: the upload field **must** be named `file` and the request must be
+> `multipart/form-data` (that is what `-F` does in curl).
+
+### 4a. Read all genetic data for `individual123`
+
+```bash
+curl -s http://localhost:3000/individuals/individual123/genetic-data
+```
+
+Expected: `200 OK`, a payload containing the four parsed rows:
+
+```json
+{
+  "individualId": "individual123",
+  "variants": [
+    { "variantId": "rs12345", "chromosome": 1, "position": 1234567, "referenceAllele": "A", "alternateAllele": "G", "alternateAlleleFrequency": 0.12 },
+    { "variantId": "rs67890", "chromosome": 2, "position": 2345678, "referenceAllele": "C", "alternateAllele": "T", "alternateAlleleFrequency": 0.34 },
+    { "variantId": "rs13579", "chromosome": "X", "position": 3456789, "referenceAllele": "G", "alternateAllele": "A", "alternateAlleleFrequency": 0.45 },
+    { "variantId": "rs24680", "chromosome": "Y", "position": 4567890, "referenceAllele": "T", "alternateAllele": "C", "alternateAlleleFrequency": 0.67 }
+  ]
+}
+```
+
+### 4b. Filter to two specific variants
+
+```bash
+curl -s "http://localhost:3000/individuals/individual123/genetic-data?variants=rs12345,rs24680"
+```
+
+Expected: `200 OK`, only the two requested rows (order matches stored order):
+
+```json
+{
+  "individualId": "individual123",
+  "variants": [
+    { "variantId": "rs12345", "chromosome": 1, "position": 1234567, "referenceAllele": "A", "alternateAllele": "G", "alternateAlleleFrequency": 0.12 },
+    { "variantId": "rs24680", "chromosome": "Y", "position": 4567890, "referenceAllele": "T", "alternateAllele": "C", "alternateAlleleFrequency": 0.67 }
+  ]
+}
+```
+
+---
+
+## Design notes and tradeoffs
+
+**Parser (Part 1)**
+
+- **Strict by default.** Any missing / invalid field is a failure with
+  `{ line, field, rawValue, message }`.
+- **Fail-fast.** Returns the first error; multi-error collection is an
+  easy follow-up behind the same `ParseSanoResult` shape.
+- **Header handling.** Column order is flexible (mapped by label), but
+  labels must match the spec strings exactly. No aliases, no case folding.
+- **Simple CSV.** `split(',')` — commas in values are not supported; the
+  spec shows no quoting so this is acceptable.
+- **Extra rules I picked and documented:**
+  - `ref !== alt` (a variant must differ from the reference).
+  - Variant IDs must be unique within a single file.
+  - Chromosome `X`/`Y` only uppercase.
+  - Trailing blank lines are skipped; inner blank lines are errors.
+
+**Storage**
+
+- `Store` interface (`src/storage/types.ts`) is the seam between routes and
+  persistence. Today it is implemented in-memory (`Map`s). A SQLite or
+  Postgres version would plug in without touching any HTTP code.
+- **Upload replaces** previously stored variants for that individual.
+  Replace is simpler and easier to demo; merge could be added behind the
+  same interface.
+
+**HTTP layer**
+
+- Factory-style `createApp({ store })` so tests get a fresh store per test
+  and `server.ts` is the only file that calls `.listen(...)`.
+- One shared error shape (`{ error: { message, details? } }`) across 400 /
+  404 / 409 / 500.
+- 5 MB upload cap and single-file enforcement via Multer.
+
+**Parser ↔ API handoff**
+
+- Parser is pure: takes a UTF-8 **string**, returns typed variants or a
+  structured error.
+- The upload route is the only place that knows about Multer / buffers. It
+  reads `req.file.buffer.toString("utf8")`, then hands off to `parseSano`.
+
+## What I would add with more time
+
+- **Durable storage:** SQLite implementation of `Store` (individuals table,
+  variants table, index on `(individual_id, variant_id)` for the filter
+  query).
+- **Multi-error parsing:** collect all row-level errors before returning,
+  bounded by a max-errors limit.
+- **Bulk operations:** create/list multiple individuals, upload many files
+  in one request (NDJSON or ZIP), with per-item success reporting.
+- **Auth & quotas:** API keys, per-individual ownership, request rate
+  limiting via `express-rate-limit` or an API gateway.
+- **Observability:** request IDs, structured logs (pino), a `/metrics`
+  endpoint.
+- **Stricter upload handling:** stream parsing so very large files don't
+  need to live in memory; verify declared MIME type.
+- **Schema validation with Zod** at the edge so error messages are
+  consistent between route validation and domain validation.

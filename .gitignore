@@ -5,3 +5,6 @@ coverage
 .DS_Store
 .vscode
 .idea
+
+# Personal notes, not for submission
+LOOM_SCRIPT.md
