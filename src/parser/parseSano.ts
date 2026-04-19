@@ -1,8 +1,7 @@
 import { REQUIRED_FIELDS } from "./constants.js";
 import { parseHeader } from "./header.js";
 import { assembleRow } from "./validate.js";
-import type { ParsedVariant } from "./types.js";
-import type { ParseSanoResult } from "./errors.js";
+import type { ParsedVariant, ParseSanoResult } from "./types.js";
 
 /**
  * Parse the full contents of a .sano file.

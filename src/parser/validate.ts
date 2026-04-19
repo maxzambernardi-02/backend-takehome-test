@@ -1,6 +1,12 @@
 import { FIELD_HUMAN_NAME, NUCLEOTIDES } from "./constants.js";
-import { err, ok, type Result } from "./errors.js";
-import type { Chromosome, Nucleotide, ParsedVariant } from "./types.js";
+import {
+  err,
+  ok,
+  type Chromosome,
+  type Nucleotide,
+  type ParsedVariant,
+  type Result,
+} from "./types.js";
 import type { ColumnIndexByField } from "./header.js";
 
 const INTEGER_RE = /^\d+$/;

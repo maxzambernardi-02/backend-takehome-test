@@ -1,6 +1,5 @@
 import { HEADER_LABEL_TO_FIELD, REQUIRED_FIELDS } from "./constants.js";
-import { err, ok, type Result } from "./errors.js";
-import type { LogicalField } from "./types.js";
+import { err, ok, type LogicalField, type Result } from "./types.js";
 
 export type ColumnIndexByField = Readonly<Record<LogicalField, number>>;
 

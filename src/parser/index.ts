@@ -5,9 +5,7 @@ export type {
   Nucleotide,
   LogicalField,
   AutosomeNumber,
-} from "./types.js";
-export type {
   ParseSanoResult,
   ParseError,
   ParseErrorKind,
-} from "./errors.js";
+} from "./types.js";
