@@ -5,7 +5,7 @@ format and exposes a REST API to upload and query results per individual.
 
 The original assignment brief is preserved in [ASSIGNMENT.md](./ASSIGNMENT.md).
 
-**Loom video:** _TODO_ — paste URL here before submitting.
+**Loom video:** https://www.loom.com/share/ae7cc3d720a94c41b7f48896c859886f
 
 ---
 
